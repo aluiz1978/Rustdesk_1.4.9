@@ -174,7 +174,12 @@ async fn connect_and_login(
                         received = true;
                         interface.update_received(true);
                     }
-                    let msg_in = Message::parse_from_bytes(&bytes)?;
+                    let msg_in = match Message::parse_from_bytes(&bytes) {
+                        Ok(msg) => msg,
+                        Err(err) => {
+                            return Err(err.into());
+                        }
+                    };
                     match msg_in.union {
                         Some(message::Union::Hash(hash)) => {
                             if !interface.handle_hash(password, hash, &mut stream).await {
