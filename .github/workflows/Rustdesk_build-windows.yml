@@ -82,7 +82,24 @@ jobs:
         with:
           vcpkgDirectory: C:\vcpkg
           vcpkgGitCommitId: ${{ env.VCPKG_COMMIT_ID }}
-          doNotCache: false
+          doNotCache: true
+
+      - name: Corrigir sintaxe do vcpkg.json
+        shell: python
+        run: |
+          import json, os
+          if os.path.exists('vcpkg.json'):
+              with open('vcpkg.json', 'r', encoding='utf-8') as f:
+                  data = json.load(f)
+              
+              if 'dependencies' in data:
+                  for dep in data['dependencies']:
+                      if isinstance(dep, dict) and 'version' in dep:
+                          dep['version>='] = dep.pop('version')
+                          
+              with open('vcpkg.json', 'w', encoding='utf-8') as f:
+                  json.dump(data, f, indent=2)
+              print("Sintaxe de versão do vcpkg.json corrigida com sucesso!")
 
       - name: Install vcpkg dependencies
         env:
@@ -102,25 +119,13 @@ jobs:
           name: topmostwindow-artifacts
           path: "./rustdesk"
 
-      - name: Download RustDeskTempTopMostWindow artifacts
-        uses: actions/download-artifact@master
-        with:
-          name: topmostwindow-artifacts
-          path: "./rustdesk"
-
       - name: Preparar arquivos para o Instalador
         shell: bash
         run: |
-          # Cria a pasta caso não exista
           mkdir -p ./rustdesk
-          
-          # Copia os binários do diretório correto do Flutter
           cp -r ./flutter/build/windows/x64/runner/Release/* ./rustdesk/
-          
-          # Renomeia usando um arquivo temporário para evitar o erro de "mesmo arquivo" no Windows
           mv ./rustdesk/rustdesk.exe ./rustdesk/temp.exe
           mv ./rustdesk/temp.exe ./rustdesk/RustDesk.exe
-
       - name: Build self-extracted executable (.exe)
         shell: bash
         run: |
