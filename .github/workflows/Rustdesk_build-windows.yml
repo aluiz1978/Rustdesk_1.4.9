@@ -11,7 +11,7 @@ env:
   FLUTTER_VERSION: "3.24.5"
   TAG_NAME: "nightly"
   VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
-  VCPKG_COMMIT_ID: "1df1fbc48d0efb4ee59f9d5070f2b7a5c85fac88"
+  VCPKG_COMMIT_ID: "f74a2eade17a628413746557d04db25ccf6e76f9"
   VERSION: "1.4.6"
   UPLOAD_ARTIFACT: "true"
 
@@ -82,7 +82,7 @@ jobs:
         with:
           vcpkgDirectory: C:\vcpkg
           vcpkgGitCommitId: ${{ env.VCPKG_COMMIT_ID }}
-          doNotCache: false
+          doNotCache: true
 
       - name: Install vcpkg dependencies
         env:
