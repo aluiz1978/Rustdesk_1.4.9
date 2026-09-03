@@ -14,10 +14,12 @@
     },
     {
       "name": "libjpeg-turbo",
+      "version": "3.1.1",
       "host": true
     },
     {
       "name": "libjpeg-turbo",
+      "version": "3.1.1",
       "host": false
     },
     {
