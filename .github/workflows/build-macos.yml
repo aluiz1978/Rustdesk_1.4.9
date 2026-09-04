@@ -1,4 +1,4 @@
-name: TCE-PE Build - Mac
+name: TCE-PE Build - Linux
 
 on:
   workflow_dispatch:
@@ -26,51 +26,31 @@ jobs:
   generate-bridge:
     uses: ./.github/workflows/bridge.yml
 
-  build-for-macOS:
-    name: Compilar Mac (${{ matrix.job.arch }})
-    runs-on: ${{ matrix.job.os }}
+  build-for-linux:
+    name: Compilar Linux
     needs: [generate-bridge]
-    strategy:
-      fail-fast: false
-      matrix:
-        job:
-          - target: x86_64-apple-darwin
-            os: macos-15-intel
-            arch: x86_64
-          - target: aarch64-apple-darwin
-            os: macos-14
-            arch: aarch64
+    runs-on: ubuntu-22.04
     steps:
       - name: Checkout source code
         uses: actions/checkout@v4
         with:
           submodules: recursive
 
-      - name: Install build runtime
-        run: brew install llvm create-dmg pkg-config nasm aom libvmaf
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y g++ gcc git curl wget nasm yasm libgtk-3-dev clang libxcb-randr0-dev libxdo-dev libxfixes-dev libxcb-shape0-dev libxcb-xfixes0-dev libasound2-dev libpulse-dev cmake make libwebp-dev libclang-dev pkg-config libunwind-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev ninja-build zip unzip tar libpam0g-dev
 
       - name: Install flutter
-        uses: subosito/flutter-action@v2
+        uses: subosito/flutter-action@v2.12.0
         with:
           channel: "stable"
           flutter-version: ${{ env.FLUTTER_VERSION }}
 
-      - name: Patch flutter
-        run: |
-          cd $(dirname $(dirname $(which flutter)))
-          git apply ${{ github.workspace }}/.github/patches/flutter_3.24.4_dropdown_menu_enableFilter.diff
-
-      - name: Workaround for flutter issue
-        shell: bash
-        run: |
-          cd "$(dirname "$(which flutter)")"
-          sed -i -e 's/_setFramesEnabledState(false);/\/\/_setFramesEnabledState(false);/g' ../packages/flutter/lib/src/scheduler/binding.dart
-
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@v1
         with:
-          toolchain: ${{ env.MAC_RUST_VERSION }}
-          targets: ${{ matrix.job.target }}
+          toolchain: ${{ env.RUST_VERSION }}
           components: rustfmt
 
       - name: Restore bridge files
@@ -85,83 +65,53 @@ jobs:
           vcpkgGitCommitId: ${{ env.VCPKG_COMMIT_ID }}
           doNotCache: false
 
-      - name: Corrigir vcpkg.json (Remover AOM e ajustar sintaxe/versoes)
+      - name: Corrigir sintaxe e versoes do vcpkg.json
         shell: python
         run: |
           import json, os
-          
           if os.path.exists('vcpkg.json'):
               with open('vcpkg.json', 'r', encoding='utf-8') as f:
                   data = json.load(f)
               
               if 'dependencies' in data:
-                  nova_lista = []
                   for dep in data['dependencies']:
-                      # Ignora o AOM
-                      if dep == 'aom':
-                          continue
-                      if isinstance(dep, dict) and dep.get('name') == 'aom':
-                          continue
-                          
-                      # Corrige sintaxe e força libjpeg-turbo para 3.1.1
                       if isinstance(dep, dict):
                           if 'version' in dep:
                               dep['version>='] = dep.pop('version')
-                          if dep.get('name') == 'libjpeg-turbo' and 'version>=' in dep:
+                          
+                          # Forçando as versões de todos os pacotes problemáticos para a versão máxima do commit atual
+                          name = dep.get('name')
+                          if name == 'libjpeg-turbo' and 'version>=' in dep:
                               dep['version>='] = '3.1.1'
+                          if name == 'pkgconf' and 'version>=' in dep:
+                              dep['version>='] = '2.5.1'
+                          if name == 'vcpkg-cmake-config' and 'version>=' in dep:
+                              dep['version>='] = '2024-05-23'
                               
-                      nova_lista.append(dep)
-                  data['dependencies'] = nova_lista
-                  
-              # Ajusta overrides caso o libjpeg-turbo esteja listado lá
               if 'overrides' in data:
                   for ovr in data['overrides']:
-                      if isinstance(ovr, dict) and ovr.get('name') == 'libjpeg-turbo':
-                          ovr['version'] = '3.1.1'
-                  
+                      if isinstance(ovr, dict):
+                          name = ovr.get('name')
+                          if name == 'libjpeg-turbo':
+                              ovr['version'] = '3.1.1'
+                          if name == 'pkgconf':
+                              ovr['version'] = '2.5.1'
+                          if name == 'vcpkg-cmake-config':
+                              ovr['version'] = '2024-05-23'
+                          
               with open('vcpkg.json', 'w', encoding='utf-8') as f:
                   json.dump(data, f, indent=2)
-              print("--- SUCESSO: AOM removido e sintaxe/versões corrigidas no vcpkg.json ---")
+              print("Sintaxe e versões do vcpkg.json corrigidas com sucesso!")
 
       - name: Install vcpkg dependencies
         run: $VCPKG_ROOT/vcpkg install --x-install-root="$VCPKG_ROOT/installed"
 
       - name: Build rustdesk
         run: |
-          export PKG_CONFIG_PATH="$(brew --prefix aom)/lib/pkgconfig:$(brew --prefix libvmaf)/lib/pkgconfig:$PKG_CONFIG_PATH"
-          export C_INCLUDE_PATH="$(brew --prefix aom)/include:$(brew --prefix libvmaf)/include:$C_INCLUDE_PATH"
-          export LIBRARY_PATH="$(brew --prefix aom)/lib:$(brew --prefix libvmaf)/lib:$LIBRARY_PATH"
-          
-          VCPKG_ARCH=$([[ "${{ matrix.job.target }}" == "aarch64-apple-darwin" ]] && echo "arm64-osx" || echo "x64-osx")
-          mkdir -p $VCPKG_ROOT/installed/$VCPKG_ARCH/lib
-          mkdir -p $VCPKG_ROOT/installed/$VCPKG_ARCH/include
-          
-          cp -f $(brew --prefix aom)/lib/libaom.a $VCPKG_ROOT/installed/$VCPKG_ARCH/lib/ || true
-          cp -fR $(brew --prefix aom)/include/* $VCPKG_ROOT/installed/$VCPKG_ARCH/include/ || true
-          
-          cp -f $(brew --prefix libvmaf)/lib/libvmaf.a $VCPKG_ROOT/installed/$VCPKG_ARCH/lib/ || true
-          cp -fR $(brew --prefix libvmaf)/include/* $VCPKG_ROOT/installed/$VCPKG_ARCH/include/ || true
-          
-          export RUSTFLAGS="-L native=$(brew --prefix libvmaf)/lib -l static=vmaf"
-          
-          if [ "${{ matrix.job.target }}" = "aarch64-apple-darwin" ]; then
-            MIN_MACOS_VERSION="12.3"
-            sed -i -e "s/MACOSX_DEPLOYMENT_TARGET\=[0-9]*.[0-9]*/MACOSX_DEPLOYMENT_TARGET=${MIN_MACOS_VERSION}/" build.py
-            sed -i -e "s/platform :osx, '.*'/platform :osx, '${MIN_MACOS_VERSION}'/" flutter/macos/Podfile
-            sed -i -e "s/osx_minimum_system_version = \"[0-9]*.[0-9]*\"/osx_minimum_system_version = \"${MIN_MACOS_VERSION}\"/" Cargo.toml
-            sed -i -e "s/MACOSX_DEPLOYMENT_TARGET = [0-9]*.[0-9]*;/MACOSX_DEPLOYMENT_TARGET = ${MIN_MACOS_VERSION};/" flutter/macos/Runner.xcodeproj/project.pbxproj
-          fi
-          ./build.py --flutter --hwcodec --unix-file-copy-paste
+          python3 ./build.py --flutter --hwcodec
 
-      - name: create unsigned dmg
-        run: |
-          CREATE_DMG="$(command -v create-dmg)"
-          CREATE_DMG="$(readlink -f "$CREATE_DMG")"
-          sed -i -e 's/MAXIMUM_UNMOUNTING_ATTEMPTS=3/MAXIMUM_UNMOUNTING_ATTEMPTS=7/' "$CREATE_DMG"
-          create-dmg --icon "RustDesk.app" 200 190 --hide-extension "RustDesk.app" --window-size 800 400 --app-drop-link 600 185 rustdesk-${{ env.VERSION }}-${{ matrix.job.arch }}.dmg ./flutter/build/macos/Build/Products/Release/RustDesk.app
-
-      - name: Disponibilizar Instaladores Mac
+      - name: Disponibilizar Aplicativo Linux
         uses: actions/upload-artifact@master
         with:
-          name: rustdesk-macos-instalador-${{ matrix.job.arch }}-tcepe
-          path: rustdesk-${{ env.VERSION }}-${{ matrix.job.arch }}.dmg
+          name: rustdesk-linux-tcepe
+          path: ./flutter/build/linux/x64/release/bundle/
