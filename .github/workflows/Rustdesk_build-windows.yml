@@ -14,6 +14,12 @@ env:
   VCPKG_COMMIT_ID: "120deac3062162151622ca4860575a33844ba10b"
   VERSION: "1.4.6"
   UPLOAD_ARTIFACT: "true"
+  
+  # --- CONFIGURAÇÕES DO SEU SERVIDOR (HORUS) ---
+  RENDEZVOUS_SERVER: "horus.tcepe.tc.br"
+  RS_PUB_KEY: "NctRD1DQC8cLPTWoUaNGDsF0Flb7TLvusYOOeBSOq6g="
+  RELAY_SERVER: "horus.tcepe.tc.br"
+  API_SERVER: "https://horus.tcepe.tc.br"
 
 jobs:
   generate-bridge:
@@ -97,16 +103,22 @@ jobs:
                       if isinstance(dep, dict):
                           if 'version' in dep:
                               dep['version>='] = dep.pop('version')
-                          # Força a versão do libjpeg-turbo para 3.1.1 (suportada pelo commit atual)
-                          if dep.get('name') == 'libjpeg-turbo' and 'version>=' in dep:
+                          
+                          name = dep.get('name')
+                          if name == 'libjpeg-turbo' and 'version>=' in dep:
                               dep['version>='] = '3.1.1'
+                          if name == 'pkgconf' and 'version>=' in dep:
+                              dep['version>='] = '2.5.1'
                               
-              # Trata também caso o libjpeg-turbo esteja listado nos overrides
               if 'overrides' in data:
                   for ovr in data['overrides']:
-                      if isinstance(ovr, dict) and ovr.get('name') == 'libjpeg-turbo':
-                          ovr['version'] = '3.1.1'
-                          
+                      if isinstance(ovr, dict):
+                          name = ovr.get('name')
+                          if name == 'libjpeg-turbo':
+                              ovr['version'] = '3.1.1'
+                          if name == 'pkgconf':
+                              ovr['version'] = '2.5.1'
+                              
               with open('vcpkg.json', 'w', encoding='utf-8') as f:
                   json.dump(data, f, indent=2)
               print("Sintaxe e versões do vcpkg.json corrigidas com sucesso!")
