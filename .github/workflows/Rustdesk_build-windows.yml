@@ -11,7 +11,7 @@ env:
   FLUTTER_VERSION: "3.24.5"
   TAG_NAME: "nightly"
   VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
-  VCPKG_COMMIT_ID: "120deac3062162151622ca4860575a33844ba10b"
+  VCPKG_COMMIT_ID: "04a9d8e5212d01ee1dd9478eadd9caade4f8b0d4"
   VERSION: "1.4.6"
   UPLOAD_ARTIFACT: "true"
   
