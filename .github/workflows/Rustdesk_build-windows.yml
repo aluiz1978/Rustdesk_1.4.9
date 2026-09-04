@@ -47,7 +47,7 @@ jobs:
           submodules: recursive
 
       - name: Restore bridge files
-        uses: actions/download-artifact@master
+        uses: actions/download-artifact@v4
         with:
           name: bridge-artifact
           path: ./
@@ -90,6 +90,20 @@ jobs:
           vcpkgGitCommitId: ${{ env.VCPKG_COMMIT_ID }}
           doNotCache: true
 
+      - name: Corrigir sintaxe do vcpkg.json
+        shell: python
+        run: |
+          import json, os
+          if os.path.exists('vcpkg.json'):
+              with open('vcpkg.json', 'r', encoding='utf-8') as f:
+                  data = json.load(f)
+              if 'dependencies' in data:
+                  for dep in data['dependencies']:
+                      if isinstance(dep, dict) and 'version' in dep:
+                          dep['version>='] = dep.pop('version')
+              with open('vcpkg.json', 'w', encoding='utf-8') as f:
+                  json.dump(data, f, indent=2)
+
       - name: Install vcpkg dependencies
         env:
           VCPKG_DEFAULT_HOST_TRIPLET: x64-windows-static
@@ -103,7 +117,7 @@ jobs:
         shell: bash
 
       - name: Download RustDeskTempTopMostWindow artifacts
-        uses: actions/download-artifact@master
+        uses: actions/download-artifact@v4
         with:
           name: topmostwindow-artifacts
           path: "./rustdesk"
@@ -140,7 +154,7 @@ jobs:
           mv ./Package/bin/x64/Release/en-us/Package.msi ../../SignOutput/rustdesk-${{ env.VERSION }}-x86_64.msi
 
       - name: Disponibilizar Instaladores Windows
-        uses: actions/upload-artifact@master
+        uses: actions/upload-artifact@v4
         with:
           name: instaladores-windows-tcepe
           path: ./SignOutput/
