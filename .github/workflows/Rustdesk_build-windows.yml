@@ -84,7 +84,7 @@ jobs:
           vcpkgGitCommitId: ${{ env.VCPKG_COMMIT_ID }}
           doNotCache: true
 
-      - name: Corrigir sintaxe do vcpkg.json
+      - name: Corrigir sintaxe e versoes do vcpkg.json
         shell: python
         run: |
           import json, os
@@ -94,12 +94,22 @@ jobs:
               
               if 'dependencies' in data:
                   for dep in data['dependencies']:
-                      if isinstance(dep, dict) and 'version' in dep:
-                          dep['version>='] = dep.pop('version')
+                      if isinstance(dep, dict):
+                          if 'version' in dep:
+                              dep['version>='] = dep.pop('version')
+                          # Força a versão do libjpeg-turbo para 3.1.1 (suportada pelo commit atual)
+                          if dep.get('name') == 'libjpeg-turbo' and 'version>=' in dep:
+                              dep['version>='] = '3.1.1'
+                              
+              # Trata também caso o libjpeg-turbo esteja listado nos overrides
+              if 'overrides' in data:
+                  for ovr in data['overrides']:
+                      if isinstance(ovr, dict) and ovr.get('name') == 'libjpeg-turbo':
+                          ovr['version'] = '3.1.1'
                           
               with open('vcpkg.json', 'w', encoding='utf-8') as f:
                   json.dump(data, f, indent=2)
-              print("Sintaxe de versão do vcpkg.json corrigida com sucesso!")
+              print("Sintaxe e versões do vcpkg.json corrigidas com sucesso!")
 
       - name: Install vcpkg dependencies
         env:
@@ -126,6 +136,7 @@ jobs:
           cp -r ./flutter/build/windows/x64/runner/Release/* ./rustdesk/
           mv ./rustdesk/rustdesk.exe ./rustdesk/temp.exe
           mv ./rustdesk/temp.exe ./rustdesk/RustDesk.exe
+          
       - name: Build self-extracted executable (.exe)
         shell: bash
         run: |
