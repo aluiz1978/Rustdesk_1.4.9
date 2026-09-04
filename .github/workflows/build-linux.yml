@@ -78,14 +78,26 @@ jobs:
                       if isinstance(dep, dict):
                           if 'version' in dep:
                               dep['version>='] = dep.pop('version')
-                          # Força a versão do libjpeg-turbo para 3.1.1 para evitar erros de versão não encontrada
-                          if dep.get('name') == 'libjpeg-turbo' and 'version>=' in dep:
+                          
+                          # Forçando as versões de todos os pacotes problemáticos para a versão máxima do commit atual
+                          name = dep.get('name')
+                          if name == 'libjpeg-turbo' and 'version>=' in dep:
                               dep['version>='] = '3.1.1'
+                          if name == 'pkgconf' and 'version>=' in dep:
+                              dep['version>='] = '2.5.1'
+                          if name == 'vcpkg-cmake-config' and 'version>=' in dep:
+                              dep['version>='] = '2024-05-23'
                               
               if 'overrides' in data:
                   for ovr in data['overrides']:
-                      if isinstance(ovr, dict) and ovr.get('name') == 'libjpeg-turbo':
-                          ovr['version'] = '3.1.1'
+                      if isinstance(ovr, dict):
+                          name = ovr.get('name')
+                          if name == 'libjpeg-turbo':
+                              ovr['version'] = '3.1.1'
+                          if name == 'pkgconf':
+                              ovr['version'] = '2.5.1'
+                          if name == 'vcpkg-cmake-config':
+                              ovr['version'] = '2024-05-23'
                           
               with open('vcpkg.json', 'w', encoding='utf-8') as f:
                   json.dump(data, f, indent=2)
