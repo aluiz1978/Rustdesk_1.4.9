@@ -15,6 +15,13 @@ env:
   VERSION: "1.4.6"
   UPLOAD_ARTIFACT: "true"
 
+   # --- CONFIGURAÇÕES DO SEU SERVIDOR (HORUS) ---
+  
+  RENDEZVOUS_SERVER: "horus.tcepe.tc.br"
+  RS_PUB_KEY: "NctRD1DQC8cLPTWoUaNGDsF0Flb7TLvusYOOeBSOq6g="
+  RELAY_SERVER: "horus.tcepe.tc.br"      # Opcional (se for o mesmo do Rendezvous)
+  API_SERVER: "https://horus.tcepe.tc.br" # Opcional (se usarem painel web/API)
+
 jobs:
   generate-bridge:
     uses: ./.github/workflows/bridge.yml
