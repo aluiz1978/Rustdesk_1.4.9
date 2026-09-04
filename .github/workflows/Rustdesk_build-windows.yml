@@ -90,39 +90,6 @@ jobs:
           vcpkgGitCommitId: ${{ env.VCPKG_COMMIT_ID }}
           doNotCache: true
 
-      - name: Corrigir sintaxe e versoes do vcpkg.json
-        shell: python
-        run: |
-          import json, os
-          if os.path.exists('vcpkg.json'):
-              with open('vcpkg.json', 'r', encoding='utf-8') as f:
-                  data = json.load(f)
-              
-              if 'dependencies' in data:
-                  for dep in data['dependencies']:
-                      if isinstance(dep, dict):
-                          if 'version' in dep:
-                              dep['version>='] = dep.pop('version')
-                          
-                          name = dep.get('name')
-                          if name == 'libjpeg-turbo' and 'version>=' in dep:
-                              dep['version>='] = '3.1.1'
-                          if name == 'pkgconf' and 'version>=' in dep:
-                              dep['version>='] = '2.5.1'
-                              
-              if 'overrides' in data:
-                  for ovr in data['overrides']:
-                      if isinstance(ovr, dict):
-                          name = ovr.get('name')
-                          if name == 'libjpeg-turbo':
-                              ovr['version'] = '3.1.1'
-                          if name == 'pkgconf':
-                              ovr['version'] = '2.5.1'
-                              
-              with open('vcpkg.json', 'w', encoding='utf-8') as f:
-                  json.dump(data, f, indent=2)
-              print("Sintaxe e versões do vcpkg.json corrigidas com sucesso!")
-
       - name: Install vcpkg dependencies
         env:
           VCPKG_DEFAULT_HOST_TRIPLET: x64-windows-static
