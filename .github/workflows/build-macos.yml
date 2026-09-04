@@ -85,7 +85,7 @@ jobs:
           vcpkgGitCommitId: ${{ env.VCPKG_COMMIT_ID }}
           doNotCache: false
 
-      - name: Remover AOM do vcpkg de forma segura
+      - name: Corrigir vcpkg.json (Remover AOM e ajustar sintaxe/versoes)
         shell: python
         run: |
           import json, os
@@ -97,16 +97,31 @@ jobs:
               if 'dependencies' in data:
                   nova_lista = []
                   for dep in data['dependencies']:
+                      # Ignora o AOM
                       if dep == 'aom':
                           continue
                       if isinstance(dep, dict) and dep.get('name') == 'aom':
                           continue
+                          
+                      # Corrige sintaxe e força libjpeg-turbo para 3.1.1
+                      if isinstance(dep, dict):
+                          if 'version' in dep:
+                              dep['version>='] = dep.pop('version')
+                          if dep.get('name') == 'libjpeg-turbo' and 'version>=' in dep:
+                              dep['version>='] = '3.1.1'
+                              
                       nova_lista.append(dep)
                   data['dependencies'] = nova_lista
                   
+              # Ajusta overrides caso o libjpeg-turbo esteja listado lá
+              if 'overrides' in data:
+                  for ovr in data['overrides']:
+                      if isinstance(ovr, dict) and ovr.get('name') == 'libjpeg-turbo':
+                          ovr['version'] = '3.1.1'
+                  
               with open('vcpkg.json', 'w', encoding='utf-8') as f:
                   json.dump(data, f, indent=2)
-              print("--- SUCESSO: AOM removido com segurança do vcpkg.json ---")
+              print("--- SUCESSO: AOM removido e sintaxe/versões corrigidas no vcpkg.json ---")
 
       - name: Install vcpkg dependencies
         run: $VCPKG_ROOT/vcpkg install --x-install-root="$VCPKG_ROOT/installed"
