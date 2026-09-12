@@ -161,6 +161,7 @@ flutter:
   fonts:
     - family: GestureIcons
       fonts:
+        - assets/logo_tce.svg
         - asset: assets/gestures.ttf
     - family: Tabbar
       fonts:
