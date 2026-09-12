@@ -143,7 +143,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                     children: children,
                   ),
                 ),
-                Expanded(child: Align(alignment: Alignment.bottomCenter, child: Padding(padding: const EdgeInsets.only(bottom: 20.0), child: SvgPicture.asset('assets/logo_tce.svg', width: 140))))
+                Expanded(child: Align(alignment: Alignment.bottomCenter, child: Padding(padding: const EdgeInsets.only(bottom: 20.0), child: SvgPicture.asset('assets/logo_tce.svg', width: 140)))),
               ],
             ),
             if (isOutgoingOnly)
