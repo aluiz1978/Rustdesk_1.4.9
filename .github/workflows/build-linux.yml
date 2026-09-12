@@ -72,21 +72,21 @@ jobs:
               with open('vcpkg.json', 'r', encoding='utf-8') as f:
                   data = json.load(f)
               
-              # 1. Remove qualquer trava de versão dentro das dependências
+              # 1. Limpa exigências dentro de dependências
               if 'dependencies' in data:
                   for dep in data['dependencies']:
                       if isinstance(dep, dict):
                           dep.pop('version', None)
                           dep.pop('version>=', None)
               
-              # 2. Destrói blocos inteiros que forçam versões globais
+              # 2. Destrói TODOS os blocos que forçam versões globais
               data.pop('overrides', None)
               data.pop('builtin-baseline', None)
+              data.pop('vcpkg-configuration', None)
               
               with open('vcpkg.json', 'w', encoding='utf-8') as f:
                   json.dump(data, f, indent=2)
-              print("vcpkg.json limpo com sucesso! Usando versões nativas do cache.")
-
+              print("Limpeza agressiva do vcpkg.json concluída!")
               
       - name: Install vcpkg dependencies
         run: $VCPKG_ROOT/vcpkg install --x-install-root="$VCPKG_ROOT/installed"
