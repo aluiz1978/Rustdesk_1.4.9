@@ -16,6 +16,7 @@ import 'package:flutter_hbb/desktop/widgets/update_progress.dart';
 import 'package:flutter_hbb/models/platform_model.dart';
 import 'package:flutter_hbb/models/server_model.dart';
 import 'package:flutter_hbb/models/state_model.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_hbb/utils/multi_window_manager.dart';
 import 'package:flutter_hbb/utils/platform_channel.dart';
 import 'package:get/get.dart';
@@ -130,7 +131,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
       value: gFFI.serverModel,
       child: Container(
         width: isIncomingOnly ? 280.0 : 200.0,
-        color: Theme.of(context).colorScheme.background,
+        color: const Color(0xFF2B54A1),
         child: Stack(
           children: [
             Column(
@@ -142,7 +143,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                     children: children,
                   ),
                 ),
-                Expanded(child: Container())
+                Expanded(child: Align(alignment: Alignment.bottomCenter, child: Padding(padding: const EdgeInsets.only(bottom: 20.0), child: SvgPicture.asset('assets/logo_tce.svg', width: 140))))
               ],
             ),
             if (isOutgoingOnly)
@@ -214,11 +215,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                           translate("ID"),
                           style: TextStyle(
                               fontSize: 14,
-                              color: Theme.of(context)
-                                  .textTheme
-                                  .titleLarge
-                                  ?.color
-                                  ?.withOpacity(0.5)),
+                              color: Colors.white70),
                         ).marginOnly(top: 5),
                         buildPopupMenu(context)
                       ],
@@ -239,7 +236,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                           contentPadding: EdgeInsets.only(top: 10, bottom: 10),
                         ),
                         style: TextStyle(
-                          fontSize: 22,
+                          fontSize: 22, color: Colors.white, fontWeight: FontWeight.bold),
                         ),
                       ).workaroundFreezeLinuxMint(),
                     ),
@@ -336,7 +333,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                               contentPadding:
                                   EdgeInsets.only(top: 14, bottom: 10),
                             ),
-                            style: TextStyle(fontSize: 15),
+                            style: TextStyle(fontSize: 15, color: Colors.white),
                           ).workaroundFreezeLinuxMint(),
                         ),
                       ),
@@ -455,7 +452,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
               : null);
     }
     if (systemError.isNotEmpty) {
-      return buildInstallCard("", systemError, "", () {});
+      return const Offstage();
     }
 
     if (isWindows && !bind.isDisableInstallation()) {
