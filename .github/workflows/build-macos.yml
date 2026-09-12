@@ -1,4 +1,102 @@
-- name: Injeção Cirúrgica TCE-PE (Config, Tema, Textos e Logo)
+name: TCE-PE Build - Mac
+
+on:
+  workflow_dispatch:
+
+env:
+  SCITER_RUST_VERSION: "1.75"
+  RUST_VERSION: "1.75"
+  MAC_RUST_VERSION: "1.81"
+  LLVM_VERSION: "15.0.6"
+  FLUTTER_VERSION: "3.24.5"
+  TAG_NAME: "nightly"
+  VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+  VCPKG_COMMIT_ID: "04a9d8e5212d01ee1dd9478eadd9caade4f8b0d4"
+  VERSION: "1.4.9"
+  UPLOAD_ARTIFACT: "true"
+
+  # --- CONFIGURAÇÕES DO SEU SERVIDOR (HORUS) ---
+  RENDEZVOUS_SERVER: "horus.tcepe.tc.br"
+  RS_PUB_KEY: "NctRD1DQC8cLPTWoUaNGDsF0Flb7TLvusYOOeBSOq6g="
+  RELAY_SERVER: "horus.tcepe.tc.br"
+  API_SERVER: "https://horus.tcepe.tc.br"
+
+jobs:
+  generate-bridge:
+    uses: ./.github/workflows/bridge.yml
+
+  build-for-macos:
+    name: Compilar macOS
+    needs: [generate-bridge]
+    runs-on: macos-13
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Restore bridge files
+        uses: actions/download-artifact@v4
+        with:
+          name: bridge-artifact
+          path: ./
+
+      - name: Install flutter
+        uses: subosito/flutter-action@v2.12.0
+        with:
+          channel: "stable"
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: ${{ env.MAC_RUST_VERSION }}
+          components: rustfmt
+          targets: aarch64-apple-darwin, x86_64-apple-darwin
+
+      - name: Setup vcpkg with Github Actions binary cache
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgGitCommitId: ${{ env.VCPKG_COMMIT_ID }}
+          doNotCache: false
+
+      - name: Corrigir sintaxe e versoes do vcpkg.json
+        shell: python
+        run: |
+          import json, os
+          if os.path.exists('vcpkg.json'):
+              with open('vcpkg.json', 'r', encoding='utf-8') as f:
+                  data = json.load(f)
+              
+              valid_versions = {
+                  'libjpeg-turbo': '3.1.1',
+                  'pkgconf': '2.5.1',
+                  'vcpkg-cmake-config': '2024-05-23'
+              }
+
+              if 'dependencies' in data:
+                  for dep in data['dependencies']:
+                      if isinstance(dep, dict):
+                          name = dep.get('name')
+                          if 'version' in dep:
+                              dep['version>='] = dep.pop('version')
+                          if name in valid_versions:
+                              dep['version>='] = valid_versions[name]
+              
+              if 'overrides' in data:
+                  for ovr in data['overrides']:
+                      if isinstance(ovr, dict):
+                          name = ovr.get('name')
+                          if name in valid_versions:
+                              ovr['version'] = valid_versions[name]
+              
+              with open('vcpkg.json', 'w', encoding='utf-8') as f:
+                  json.dump(data, f, indent=2)
+
+      - name: Install vcpkg dependencies
+        run: $VCPKG_ROOT/vcpkg install --x-install-root="$VCPKG_ROOT/installed"
+
+      - name: Injeção Cirúrgica TCE-PE (Config, Tema, Textos e Logo)
         shell: python
         run: |
           import os
@@ -116,3 +214,13 @@
                   f.write(content)
 
           print("--- INJEÇÃO CONCLUÍDA ---")
+
+      - name: Build rustdesk
+        run: |
+          python3 ./build.py --flutter --hwcodec
+
+      - name: Criar DMG e Disponibilizar Aplicativo Mac
+        uses: actions/upload-artifact@v4
+        with:
+          name: rustdesk-macos-tcepe
+          path: ./flutter/build/macos/Build/Products/Release/RustDesk.app
