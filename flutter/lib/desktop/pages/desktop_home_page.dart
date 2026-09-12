@@ -501,12 +501,12 @@ class _DesktopHomePageState extends State<DesktopHomePage>
       }
       //// Disable microphone configuration for macOS. We will request the permission when needed.
       // else if ((await osxCanRecordAudio() !=
-      //     PermissionAuthorizeType.authorized)) {
-      //   return buildInstallCard("Permissions", "config_microphone", "Configure",
-      //       () async {
-      //     osxRequestAudio();
-      //     watchIsCanRecordAudio = true;
-      //   });
+      //      PermissionAuthorizeType.authorized)) {
+      //    return buildInstallCard("Permissions", "config_microphone", "Configure",
+      //        () async {
+      //      osxRequestAudio();
+      //      watchIsCanRecordAudio = true;
+      //    });
       // }
     } else if (isLinux) {
       if (bind.isOutgoingOnly()) {
