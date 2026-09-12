@@ -1,0 +1,118 @@
+- name: Injeção Cirúrgica TCE-PE (Config, Tema, Textos e Logo)
+        shell: python
+        run: |
+          import os
+          import re
+
+          print("--- INICIANDO INJEÇÃO DO TCE-PE ---")
+
+          config_path = 'libs/hbb_common/src/config.rs'
+          if os.path.exists(config_path):
+              with open(config_path, 'r', encoding='utf-8') as f:
+                  rust_content = f.read()
+
+              rust_content = re.sub(r'pub const RENDEZVOUS_SERVERS:\s*\&\[\&str\]\s*=\s*\&\[.*?\];', 'pub const RENDEZVOUS_SERVERS: &[&str] = &["${{ env.RENDEZVOUS_SERVER }}"];', rust_content, flags=re.DOTALL)
+              rust_content = re.sub(r'pub const RS_PUB_KEY:\s*\&str\s*=\s*".*?";', 'pub const RS_PUB_KEY: &str = "${{ env.RS_PUB_KEY }}";', rust_content)
+
+              busca_rust = r'(pub\s+fn\s+get_option\s*\(\s*([a-zA-Z0-9_]+)\s*:\s*.*?\)\s*->\s*String\s*\{)'
+              injecao_rust = (
+                  r'\1\n'
+                  r'    if \2 == "hide-powered-by-me" { return "Y".to_owned(); }\n'
+                  r'    if \2 == "custom-rendezvous-server" { return "${{ env.RENDEZVOUS_SERVER }}".to_owned(); }\n'
+                  r'    if \2 == "rendezvous-server" { return "${{ env.RENDEZVOUS_SERVER }}".to_owned(); }\n'
+                  r'    if \2 == "relay-server" { return "${{ env.RELAY_SERVER }}".to_owned(); }\n'
+                  r'    if \2 == "api-server" { return "${{ env.API_SERVER }}".to_owned(); }\n'
+                  r'    if \2 == "key" { return "${{ env.RS_PUB_KEY }}".to_owned(); }'
+              )
+              rust_content = re.sub(busca_rust, injecao_rust, rust_content)
+              
+              with open(config_path, 'w', encoding='utf-8') as f:
+                  f.write(rust_content)
+
+          flutter_dir = 'flutter/lib'
+          for root, dirs, files in os.walk(flutter_dir):
+              for file in files:
+                  if file.endswith('.dart'):
+                      filepath = os.path.join(root, file)
+                      with open(filepath, 'r', encoding='utf-8') as f:
+                          content = f.read()
+                      original = content
+
+                      content = re.sub(r'[\'"], [\'"]\s*\+\s*translate\([\'"]For faster connection, please set up your own server[\'"]\)', '""', content)
+                      content = re.sub(r'translate\([\'"]For faster connection, please set up your own server[\'"]\)', '""', content)
+
+                      if content != original:
+                          with open(filepath, 'w', encoding='utf-8') as f:
+                              f.write(content)
+
+          pubspec_path = 'flutter/pubspec.yaml'
+          with open(pubspec_path, 'r', encoding='utf-8') as f:
+              pubspec = f.read()
+          if 'assets/logo_tce.svg' not in pubspec:
+              pubspec = pubspec.replace('  assets:', '  assets:\n    - assets/logo_tce.svg')
+              with open(pubspec_path, 'w', encoding='utf-8') as f:
+                  f.write(pubspec)
+
+          flutter_file = 'flutter/lib/desktop/pages/desktop_home_page.dart'
+          if os.path.exists(flutter_file):
+              with open(flutter_file, 'r', encoding='utf-8') as f:
+                  content = f.read()
+
+              if "import 'package:flutter_svg/flutter_svg.dart';" not in content:
+                  content = content.replace("import 'package:flutter/material.dart';", "import 'package:flutter/material.dart';\nimport 'package:flutter_svg/flutter_svg.dart';")
+
+              content = content.replace("color: Theme.of(context).colorScheme.background,", "color: const Color(0xFF2B54A1),")
+
+              busca_scroll = r'SingleChildScrollView\(\s*controller:\s*_leftPaneScrollController,\s*child:\s*Column\(\s*key:\s*_childKey,\s*children:\s*children,\s*\),\s*\)'
+              injecao_scroll = r'Expanded(child: SingleChildScrollView(controller: _leftPaneScrollController, child: Column(key: _childKey, children: children)))'
+              content = re.sub(busca_scroll, injecao_scroll, content)
+              
+              content = content.replace("Expanded(child: Container())", "Padding(padding: const EdgeInsets.only(bottom: 20.0, top: 10.0), child: SvgPicture.asset('assets/logo_tce.svg', width: 150))")
+
+              content = re.sub(r'color:\s*Theme\.of\(context\)\.textTheme\.titleLarge\?\.color\?\.withOpacity\(0\.5\)', 'color: Colors.white70', content)
+              content = re.sub(r'color:\s*Theme\.of\(context\)\.textTheme\.titleLarge\?\.color', 'color: Colors.white', content)
+              content = re.sub(r'color:\s*textColor\?\.withOpacity\(0\.5\)', 'color: Colors.white70', content)
+              content = re.sub(r'color:\s*textColor', 'color: Colors.white', content)
+              content = re.sub(r'style:\s*Theme\.of\(context\)\.textTheme\.titleLarge', 'style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600)', content)
+              content = re.sub(r'style:\s*Theme\.of\(context\)\.textTheme\.bodySmall', 'style: const TextStyle(color: Colors.white70, fontSize: 12)', content)
+
+              busca_id_input = r'border:\s*InputBorder\.none,\s*contentPadding:\s*EdgeInsets\.only\(top:\s*10,\s*bottom:\s*10\),'
+              injecao_id_input = r'filled: true, fillColor: const Color(0xFF1E3F7D), border: OutlineInputBorder(borderSide: const BorderSide(color: Colors.white30), borderRadius: BorderRadius.circular(6)), contentPadding: const EdgeInsets.only(top: 10, bottom: 10, left: 10),'
+              content = re.sub(busca_id_input, injecao_id_input, content)
+
+              busca_pw_input = r'border:\s*InputBorder\.none,\s*contentPadding:\s*EdgeInsets\.only\(top:\s*14,\s*bottom:\s*10\),'
+              injecao_pw_input = r'filled: true, fillColor: const Color(0xFF1E3F7D), border: OutlineInputBorder(borderSide: const BorderSide(color: Colors.white30), borderRadius: BorderRadius.circular(6)), contentPadding: const EdgeInsets.only(top: 14, bottom: 10, left: 10),'
+              content = re.sub(busca_pw_input, injecao_pw_input, content)
+
+              content = re.sub(r'style:\s*TextStyle\(\s*fontSize:\s*22,?\s*\)', 'style: const TextStyle(fontSize: 22, color: Colors.white)', content)
+              content = re.sub(r'style:\s*TextStyle\(\s*fontSize:\s*15\s*\)', 'style: const TextStyle(fontSize: 15, color: Colors.white)', content)
+
+              content = content.replace("Color.fromARGB(255, 226, 66, 188)", "Color(0xFFFF6E6E)")
+              content = content.replace("Color.fromARGB(255, 244, 114, 124)", "Color(0xFFFF6E6E)")
+
+              busca_right = r'buildRightPane\(BuildContext context\)\s*\{\s*return Container\(\s*color:\s*Theme\.of\(context\)\.scaffoldBackgroundColor,\s*child:\s*ConnectionPage\(\),\s*\);\s*\}'
+              injecao_right = (
+                  "buildRightPane(BuildContext context) {\n"
+                  "  return Container(\n"
+                  "    color: Colors.transparent,\n"
+                  "    child: Stack(\n"
+                  "      children: [\n"
+                  "        ConnectionPage(),\n"
+                  "        const Align(\n"
+                  "          alignment: Alignment.bottomCenter,\n"
+                  "          child: Padding(\n"
+                  "            padding: EdgeInsets.only(bottom: 25.0),\n"
+                  "            child: Text('Tribunal de Contas do Estado de Pernambuco', style: TextStyle(color: Colors.black54, fontSize: 15, fontStyle: FontStyle.italic)),\n"
+                  "          ),\n"
+                  "        )\n"
+                  "      ],\n"
+                  "    ),\n"
+                  "  );\n"
+                  "}"
+              )
+              content = re.sub(busca_right, injecao_right, content)
+
+              with open(flutter_file, 'w', encoding='utf-8') as f:
+                  f.write(content)
+
+          print("--- INJEÇÃO CONCLUÍDA ---")
