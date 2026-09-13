@@ -237,7 +237,6 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                         ),
                         style: TextStyle(
                           fontSize: 22, color: Colors.white, fontWeight: FontWeight.bold),
-                        ),
                       ).workaroundFreezeLinuxMint(),
                     ),
                   )
