@@ -155,40 +155,56 @@ jobs:
               with open(connection_page, 'w', encoding='utf-8') as f:
                   f.write(content)
 
-          # 3. Adicionar o PNG no pubspec (Corrigido para .png)
+          # 3. Adicionar o PNG no pubspec
           pubspec_path = 'flutter/pubspec.yaml'
           if os.path.exists(pubspec_path):
               with open(pubspec_path, 'r', encoding='utf-8') as f:
                   pubspec = f.read()
               
-              # Limpa resquícios do svg antigo, se houver
               pubspec = pubspec.replace('    - assets/logo_tce.svg\n', '')
-              
               if 'assets/logo_tce.png' not in pubspec:
                   pubspec = pubspec.replace('  assets:', '  assets:\n    - assets/logo_tce.png')
                   with open(pubspec_path, 'w', encoding='utf-8') as f:
                       f.write(pubspec)
 
-          # 4. Alterar o Desktop Home Page (Cor de fundo e Logo PNG)
+          # 4. Alterar o Desktop Home Page (Cor de fundo, Logo PNG e Textos Brancos)
           home_page = 'flutter/lib/desktop/pages/desktop_home_page.dart'
           if os.path.exists(home_page):
               with open(home_page, 'r', encoding='utf-8') as f:
                   content = f.read()
 
-              content = content.replace("color: Theme.of(context).colorScheme.background,", "color: const Color(0xFF2B54A1),")
-              content = re.sub(r'border:\s*InputBorder\.none,\s*contentPadding:\s*EdgeInsets\.only\(top:\s*10,\s*bottom:\s*10\),', r'filled: true, fillColor: Colors.transparent, border: InputBorder.none, contentPadding: const EdgeInsets.only(top: 10, bottom: 10),', content)
-              content = re.sub(r'border:\s*InputBorder\.none,\s*contentPadding:\s*EdgeInsets\.only\(top:\s*14,\s*bottom:\s*10\),', r'filled: true, fillColor: Colors.transparent, border: InputBorder.none, contentPadding: const EdgeInsets.only(top: 14, bottom: 10),', content)
-              content = re.sub(r'color:\s*Theme\.of\(context\)\.textTheme\.titleLarge\?\.color\?\.withOpacity\(0\.5\)', 'color: Colors.white70', content)
-              content = re.sub(r'style:\s*TextStyle\(\s*fontSize:\s*22,\s*\)', 'style: const TextStyle(fontSize: 22, color: Colors.white, fontWeight: FontWeight.bold)', content)
-              content = re.sub(r'style:\s*TextStyle\(fontSize:\s*15\)', 'style: const TextStyle(fontSize: 15, color: Colors.white)', content)
-              content = content.replace('if (systemError.isNotEmpty) {\n      return buildInstallCard("", systemError, "", () {});\n    }', 'if (systemError.isNotEmpty) {\n      return const Offstage();\n    }')
+              # Esconder TODOS os Cards de UAC e Instalação (Eles quebram o layout do painel)
+              content = re.sub(r'(Widget\s+buildInstallCard\b[^{]*\{)', r'\1 return const Offstage(); ', content)
+              content = re.sub(r'(Widget\s+buildUacCard\b[^{]*\{)', r'\1 return const Offstage(); ', content)
 
-              busca_scroll = r'SingleChildScrollView\(\s*controller:\s*_leftPaneScrollController,\s*child:\s*Column\(\s*key:\s*_childKey,\s*children:\s*children,\s*\),\s*\)'
-              injecao_scroll = r'Expanded(child: SingleChildScrollView(controller: _leftPaneScrollController, child: Column(key: _childKey, children: children)))'
-              content = re.sub(busca_scroll, injecao_scroll, content)
+              # Cor de Fundo Azul TCE-PE
+              content = content.replace("color: Theme.of(context).colorScheme.background,", "color: const Color(0xFF2B54A1),")
+              content = content.replace("color: Theme.of(context).colorScheme.surface,", "color: const Color(0xFF2B54A1),")
+
+              # Isola a área do Left Pane para pintar apenas os textos dele de Branco
+              left_pane_start = content.find('Widget _buildLeftPane')
+              right_pane_start = content.find('Widget _buildRightPane')
               
-              # Injeta PNG nativo
-              content = content.replace("Expanded(child: Container())", "Padding(padding: const EdgeInsets.only(bottom: 20.0, top: 10.0), child: Image.asset('assets/logo_tce.png', width: 140))")
+              if left_pane_start != -1 and right_pane_start != -1:
+                  left_pane_code = content[left_pane_start:right_pane_start]
+                  rest_code = content[:left_pane_start] + "___LEFT_PANE_PLACEHOLDER___" + content[right_pane_start:]
+                  
+                  # Converte os textos nativos do painel esquerdo para Branco
+                  left_pane_code = re.sub(r'Theme\.of\(context\)\.textTheme\.[a-zA-Z]+\?\.color(?:\?\.withOpacity\([0-9.]+\))?', 'Colors.white', left_pane_code)
+                  left_pane_code = re.sub(r'TextStyle\(\s*fontSize:\s*22(?:,\s*fontWeight:\s*FontWeight\.bold)?\s*\)', 'TextStyle(fontSize: 22, color: Colors.white, fontWeight: FontWeight.bold)', left_pane_code)
+                  left_pane_code = re.sub(r'TextStyle\(\s*fontSize:\s*15\s*\)', 'TextStyle(fontSize: 15, color: Colors.white)', left_pane_code)
+                  left_pane_code = re.sub(r'TextStyle\(\s*fontSize:\s*20,\s*fontWeight:\s*FontWeight\.bold\s*\)', 'TextStyle(fontSize: 20, color: Colors.white, fontWeight: FontWeight.bold)', left_pane_code)
+                  
+                  # Remove as bordas brancas dos inputs de ID e Senha
+                  left_pane_code = re.sub(r'border:\s*InputBorder\.none,\s*contentPadding:\s*EdgeInsets\.only\(top:\s*10,\s*bottom:\s*10\),', r'filled: true, fillColor: Colors.transparent, border: InputBorder.none, contentPadding: const EdgeInsets.only(top: 10, bottom: 10),', left_pane_code)
+                  left_pane_code = re.sub(r'border:\s*InputBorder\.none,\s*contentPadding:\s*EdgeInsets\.only\(top:\s*14,\s*bottom:\s*10\),', r'filled: true, fillColor: Colors.transparent, border: InputBorder.none, contentPadding: const EdgeInsets.only(top: 14, bottom: 10),', left_pane_code)
+
+                  # Injetar o LOGO no final do painel de forma nativa e sem quebrar o Flutter
+                  busca_scroll = r'(SingleChildScrollView\(\s*controller:\s*_leftPaneScrollController[\s\S]*?children:\s*)children'
+                  injecao_scroll = r"\1[ ...children, const SizedBox(height: 40), Center(child: Image.asset('assets/logo_tce.png', width: 140)) ]"
+                  left_pane_code = re.sub(busca_scroll, injecao_scroll, left_pane_code)
+
+                  content = rest_code.replace("___LEFT_PANE_PLACEHOLDER___", left_pane_code)
 
               with open(home_page, 'w', encoding='utf-8') as f:
                   f.write(content)
@@ -207,7 +223,7 @@ jobs:
                   f.write(content)
 
           print("--- INJEÇÃO CONCLUÍDA ---")
-
+          
       - name: Build rustdesk
         run: |
           python ./build.py --flutter --hwcodec
