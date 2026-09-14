@@ -16,6 +16,7 @@ import 'package:flutter_hbb/desktop/widgets/update_progress.dart';
 import 'package:flutter_hbb/models/platform_model.dart';
 import 'package:flutter_hbb/models/server_model.dart';
 import 'package:flutter_hbb/models/state_model.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_hbb/utils/multi_window_manager.dart';
 import 'package:flutter_hbb/utils/platform_channel.dart';
 import 'package:get/get.dart';
@@ -142,7 +143,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                     children: children,
                   ),
                 ),
-                Expanded(child: Align(alignment: Alignment.bottomCenter, child: Padding(padding: const EdgeInsets.only(bottom: 20.0), child: Image.asset('assets/logo_tce.png', width: 140)))),
+                Expanded(child: Align(alignment: Alignment.bottomCenter, child: Padding(padding: const EdgeInsets.only(bottom: 20.0), child: SvgPicture.asset('assets/logo_tce.svg', width: 140)))),
               ],
             ),
             if (isOutgoingOnly)
@@ -231,8 +232,6 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                         controller: model.serverId,
                         readOnly: true,
                         decoration: InputDecoration(
-                          filled: true,
-                          fillColor: Colors.transparent,
                           border: InputBorder.none,
                           contentPadding: EdgeInsets.only(top: 10, bottom: 10),
                         ),
@@ -329,8 +328,6 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                             controller: model.serverPasswd,
                             readOnly: true,
                             decoration: InputDecoration(
-                              filled: true,
-                              fillColor: Colors.transparent,
                               border: InputBorder.none,
                               contentPadding:
                                   EdgeInsets.only(top: 14, bottom: 10),
@@ -501,12 +498,22 @@ class _DesktopHomePageState extends State<DesktopHomePage>
           bind.mainIsInstalledDaemon(prompt: true);
         });
       }
+      //// Disable microphone configuration for macOS. We will request the permission when needed.
+      // else if ((await osxCanRecordAudio() !=
+      //      PermissionAuthorizeType.authorized)) {
+      //    return buildInstallCard("Permissions", "config_microphone", "Configure",
+      //        () async {
+      //      osxRequestAudio();
+      //      watchIsCanRecordAudio = true;
+      //    });
+      // }
     } else if (isLinux) {
       if (bind.isOutgoingOnly()) {
         return Container();
       }
       final LinuxCards = <Widget>[];
       if (bind.isSelinuxEnforcing()) {
+        // Check is SELinux enforcing, but show user a tip of is SELinux enabled for simple.
         final keyShowSelinuxHelpTip = "show-selinux-help-tip";
         if (bind.mainGetLocalOption(key: keyShowSelinuxHelpTip) != 'N') {
           LinuxCards.add(buildInstallCard(
@@ -547,7 +554,8 @@ class _DesktopHomePageState extends State<DesktopHomePage>
         alignment: Alignment.centerRight,
         child: OutlinedButton(
           onPressed: () {
-            SystemNavigator.pop(); 
+            SystemNavigator.pop(); // Close the application
+            // https://github.com/flutter/flutter/issues/66631
             if (isWindows) {
               exit(0);
             }
@@ -710,6 +718,10 @@ class _DesktopHomePageState extends State<DesktopHomePage>
       if (watchIsInputMonitoring) {
         if (bind.mainIsCanInputMonitoring(prompt: false)) {
           watchIsInputMonitoring = false;
+          // Do not notify for now.
+          // Monitoring may not take effect until the process is restarted.
+          // rustDeskWinManager.call(
+          //     WindowType.RemoteDesktop, kWindowDisableGrabKeyboard, '');
           setState(() {});
         }
       }
@@ -883,6 +895,7 @@ void setPasswordDialog({VoidCallback? notEmptyCallback}) async {
     DigitValidationRule(),
     UppercaseValidationRule(),
     LowercaseValidationRule(),
+    // SpecialCharacterValidationRule(),
     MinCharactersValidationRule(8),
   ];
   final maxLength = bind.mainMaxEncryptLen();
