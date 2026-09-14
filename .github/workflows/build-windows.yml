@@ -207,7 +207,7 @@ jobs:
                   f.write(content)
 
           print("--- INJEÇÃO CONCLUÍDA ---")
-          
+
       - name: Build rustdesk
         run: |
           python ./build.py --flutter --hwcodec
@@ -218,6 +218,7 @@ jobs:
         with:
           name: topmostwindow-artifacts-x64
           path: "./rustdesk"
+          merge-multiple: true
 
       - name: Preparar arquivos para o Instalador
         shell: bash
@@ -248,6 +249,7 @@ jobs:
           nuget restore msi.sln
           msbuild msi.sln -p:Configuration=Release -p:Platform=x64 /p:TargetVersion=Windows10
           mv ./Package/bin/x64/Release/en-us/Package.msi ../../SignOutput/rustdesk-${{ env.VERSION }}-x86_64.msi
+        shell: bash
 
       - name: Disponibilizar Instaladores Windows
         uses: actions/upload-artifact@v4
