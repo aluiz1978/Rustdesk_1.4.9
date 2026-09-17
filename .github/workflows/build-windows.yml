@@ -111,7 +111,7 @@ jobs:
           $VCPKG_ROOT/vcpkg install --triplet x64-windows-static --x-install-root="$VCPKG_ROOT/installed"
         shell: bash
 
-      - name: Injeção Cirúrgica TCE-PE (Customizações Seguras Sem Erro YAML)
+      - name: Injeção Cirúrgica TCE-PE (Customizações Seguras)
         shell: python
         run: |
           import os
@@ -194,13 +194,13 @@ jobs:
               # Remover "Senha de Uso Único" do menu esquerdo
               content = re.sub(r'if\s*\(\!isOutgoingOnly\)\s*buildPasswordBoard\(context\),?', 'const Offstage(),', content)
 
-              # Substituir chamadas da Logo fantasma pelo Texto TCE-PE
-              tce_text = "Expanded(child: Align(alignment: Alignment.bottomCenter, child: Padding(padding: const EdgeInsets.only(bottom: 20.0), child: Text('Tribunal de Contas\\nde Pernambuco\\n(TCE-PE)', textAlign: TextAlign.center, style: TextStyle(color: Colors.white70, fontSize: 16, fontWeight: FontWeight.bold))))),"
+              # Substituir chamadas da Logo fantasma pelo Texto TCE-PE (Com lambda para evitar bugs de Escape String)
+              tce_text = r"Expanded(child: Align(alignment: Alignment.bottomCenter, child: Padding(padding: const EdgeInsets.only(bottom: 20.0), child: Text('Tribunal de Contas\nde Pernambuco\n(TCE-PE)', textAlign: TextAlign.center, style: TextStyle(color: Colors.white70, fontSize: 16, fontWeight: FontWeight.bold))))),"
               
-              content = re.sub(r"Expanded\(\s*child:\s*Container\(\)\s*\),?", tce_text, content)
-              content = re.sub(r"Expanded\(\s*child:\s*Align\([\s\S]*?SvgPicture\.asset\('assets/logo_tce\.svg'[^)]*\)\)\)\),?", tce_text, content)
-              content = re.sub(r"Expanded\(\s*child:\s*Align\([\s\S]*?Image\.asset\('assets/logo_tce\.png'[^)]*\)\)\)\),?", tce_text, content)
-              content = re.sub(r"loadLogo\(\),?", tce_text, content)
+              content = content.replace("Expanded(child: Container())", tce_text)
+              content = re.sub(r"Expanded\(\s*child:\s*Align\([\s\S]*?SvgPicture\.asset\('assets/logo_tce\.svg'[^)]*\)\)\)\),?", lambda _: tce_text, content)
+              content = re.sub(r"Expanded\(\s*child:\s*Align\([\s\S]*?Image\.asset\('assets/logo_tce\.png'[^)]*\)\)\)\),?", lambda _: tce_text, content)
+              content = re.sub(r"loadLogo\(\),?", lambda _: tce_text, content)
 
               with open(home_page, 'w', encoding='utf-8') as f:
                   f.write(content)
@@ -222,15 +222,15 @@ jobs:
               with open(dialogs_path, 'r', encoding='utf-8') as f:
                   content = f.read()
 
-              # Textos da Janela - escritos em uma linha para não quebrar o YAML
+              # Textos da Janela
               content = content.replace("translate('Password Required')", "'Aguardando ação'")
               content = content.replace("if (passwordController != null && password.isEmpty) return;", "/* empty check removed */")
 
-              # Substituição do passwdWidget estrutural por uma string de 1 linha
-              passwd_widget_new = "passwdWidget() { if (passwordController == null) { return Offstage(); } return Column( children: [ descWidget('Aguardando a permissão do usuário!'), ], ); }"
-              content = re.sub(r'passwdWidget\(\)\s*\{[\s\S]*?return\s*Column\(\s*children:\s*\[[\s\S]*?\],\s*\);\s*\}', passwd_widget_new, content)
+              # Substituição do passwdWidget estrutural
+              passwd_widget_new = r"passwdWidget() { if (passwordController == null) { return Offstage(); } return Column( children: [ descWidget('Aguardando a permissão do usuário!'), ], ); }"
+              content = re.sub(r'passwdWidget\(\)\s*\{[\s\S]*?return\s*Column\(\s*children:\s*\[[\s\S]*?\],\s*\);\s*\}', lambda _: passwd_widget_new, content)
 
-              # Remover o botão "OK" na tela _connectDialog, forçando o usuário a aguardar (1 linha)
+              # Remover o botão "OK" na tela _connectDialog, forçando o usuário a aguardar
               idx = content.find('_connectDialog(')
               if idx != -1:
                   part1 = content[:idx]
