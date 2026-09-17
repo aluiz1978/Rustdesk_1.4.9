@@ -111,7 +111,7 @@ jobs:
           $VCPKG_ROOT/vcpkg install --triplet x64-windows-static --x-install-root="$VCPKG_ROOT/installed"
         shell: bash
 
-      - name: Injeção Cirúrgica TCE-PE (Customizações Finais Seguras)
+      - name: Injeção Cirúrgica TCE-PE (Customizações Seguras Sem Erro YAML)
         shell: python
         run: |
           import os
@@ -153,7 +153,7 @@ jobs:
               with open(connection_page, 'w', encoding='utf-8') as f:
                   f.write(content)
 
-          # 3. Remover completamente a Logo (física e código) para driblar o EPM
+          # 3. Remover completamente a Logo para driblar o EPM
           pubspec_path = 'flutter/pubspec.yaml'
           if os.path.exists(pubspec_path):
               with open(pubspec_path, 'r', encoding='utf-8') as f:
@@ -167,7 +167,7 @@ jobs:
           if os.path.exists('flutter/assets/logo_tce.svg'):
               os.remove('flutter/assets/logo_tce.svg')
 
-          # 4. Alterar o Desktop Home Page de forma estrita e segura
+          # 4. Alterar o Desktop Home Page 
           home_page = 'flutter/lib/desktop/pages/desktop_home_page.dart'
           if os.path.exists(home_page):
               with open(home_page, 'r', encoding='utf-8') as f:
@@ -216,30 +216,21 @@ jobs:
                with open(common_path, 'w', encoding='utf-8') as f:
                   f.write(content)
 
-          # 6. Customizar Janela de Senha ("Aguardando Ação")
+          # 6. Customizar Janela de Senha ("Aguardando Ação") 
           dialogs_path = 'flutter/lib/common/widgets/dialogs.dart'
           if os.path.exists(dialogs_path):
               with open(dialogs_path, 'r', encoding='utf-8') as f:
                   content = f.read()
 
-              # Textos da Janela
+              # Textos da Janela - escritos em uma linha para não quebrar o YAML
               content = content.replace("translate('Password Required')", "'Aguardando ação'")
-              content = content.replace("if (passwordController != null && password.isEmpty) return;", "/* empty password check removed */")
+              content = content.replace("if (passwordController != null && password.isEmpty) return;", "/* empty check removed */")
 
-              # Substituição estrutural do passwdWidget (Remove a caixa de texto da senha e o checkbox "lembrar")
-              passwd_widget_new = """passwdWidget() {
-      if (passwordController == null) {
-        return Offstage();
-      }
-      return Column(
-        children: [
-          descWidget('Aguardando a permissão do usuário!'),
-        ],
-      );
-    }"""
+              # Substituição do passwdWidget estrutural por uma string de 1 linha
+              passwd_widget_new = "passwdWidget() { if (passwordController == null) { return Offstage(); } return Column( children: [ descWidget('Aguardando a permissão do usuário!'), ], ); }"
               content = re.sub(r'passwdWidget\(\)\s*\{[\s\S]*?return\s*Column\(\s*children:\s*\[[\s\S]*?\],\s*\);\s*\}', passwd_widget_new, content)
 
-              # Remover o botão "OK" apenas da tela _connectDialog, forçando o usuário a aguardar.
+              # Remover o botão "OK" na tela _connectDialog, forçando o usuário a aguardar (1 linha)
               idx = content.find('_connectDialog(')
               if idx != -1:
                   part1 = content[:idx]
