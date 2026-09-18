@@ -153,7 +153,7 @@ jobs:
               with open(connection_page, 'w', encoding='utf-8') as f:
                   f.write(content)
 
-          # 3. Remover completamente a Logo para driblar o EPM
+          # 3. Remover completamente a Logo (código e arquivos) para driblar o EPM
           pubspec_path = 'flutter/pubspec.yaml'
           if os.path.exists(pubspec_path):
               with open(pubspec_path, 'r', encoding='utf-8') as f:
@@ -167,7 +167,7 @@ jobs:
           if os.path.exists('flutter/assets/logo_tce.svg'):
               os.remove('flutter/assets/logo_tce.svg')
 
-          # 4. Alterar o Desktop Home Page 
+          # 4. Alterar o Desktop Home Page de forma perfeitamente segura
           home_page = 'flutter/lib/desktop/pages/desktop_home_page.dart'
           if os.path.exists(home_page):
               with open(home_page, 'r', encoding='utf-8') as f:
@@ -191,16 +191,18 @@ jobs:
               content = re.sub(r'decoration:\s*InputDecoration\(\s*border:\s*InputBorder\.none,\s*contentPadding:\s*EdgeInsets\.only\(top:\s*10,\s*bottom:\s*10\),\s*\),?', r'decoration: const InputDecoration(filled: true, fillColor: Colors.transparent, border: InputBorder.none, contentPadding: EdgeInsets.only(top: 10, bottom: 10),),', content)
               content = re.sub(r'backgroundColor:\s*hover\.value[\s\S]*?colorScheme\.background,', r'backgroundColor: hover.value ? Colors.white24 : Colors.transparent,', content)
 
-              # Remover "Senha de Uso Único" do menu esquerdo
+              # Remover "Senha de Uso Único"
               content = re.sub(r'if\s*\(\!isOutgoingOnly\)\s*buildPasswordBoard\(context\),?', 'const Offstage(),', content)
 
-              # Substituir chamadas da Logo fantasma pelo Texto TCE-PE (Com lambda para evitar bugs de Escape String)
-              tce_text = r"Expanded(child: Align(alignment: Alignment.bottomCenter, child: Padding(padding: const EdgeInsets.only(bottom: 20.0), child: Text('Tribunal de Contas\nde Pernambuco\n(TCE-PE)', textAlign: TextAlign.center, style: TextStyle(color: Colors.white70, fontSize: 16, fontWeight: FontWeight.bold))))),"
+              # Substituir o Widget exato da Logo pelo Widget de Texto do TCE-PE
+              # Dessa forma não quebramos o layout "Flex" do painel esquerdo.
+              tce_text_widget = r"Text('Tribunal de Contas\nde Pernambuco\n(TCE-PE)', textAlign: TextAlign.center, style: TextStyle(color: Colors.white70, fontSize: 16, fontWeight: FontWeight.bold))"
               
-              content = content.replace("Expanded(child: Container())", tce_text)
-              content = re.sub(r"Expanded\(\s*child:\s*Align\([\s\S]*?SvgPicture\.asset\('assets/logo_tce\.svg'[^)]*\)\)\)\),?", lambda _: tce_text, content)
-              content = re.sub(r"Expanded\(\s*child:\s*Align\([\s\S]*?Image\.asset\('assets/logo_tce\.png'[^)]*\)\)\)\),?", lambda _: tce_text, content)
-              content = re.sub(r"loadLogo\(\),?", lambda _: tce_text, content)
+              # Substitui chamadas diretas como SvgPicture.asset('assets/logo...') ou Image.asset('assets/logo...')
+              content = re.sub(r"(?:SvgPicture|Image)\.asset\(\s*'assets/logo[^']*'[^)]*\)", lambda _: tce_text_widget, content)
+              
+              # Caso a logo tenha sido encapsulada num método genérico loadLogo()
+              content = re.sub(r"loadLogo\(\)", lambda _: tce_text_widget, content)
 
               with open(home_page, 'w', encoding='utf-8') as f:
                   f.write(content)
@@ -230,7 +232,7 @@ jobs:
               passwd_widget_new = r"passwdWidget() { if (passwordController == null) { return Offstage(); } return Column( children: [ descWidget('Aguardando a permissão do usuário!'), ], ); }"
               content = re.sub(r'passwdWidget\(\)\s*\{[\s\S]*?return\s*Column\(\s*children:\s*\[[\s\S]*?\],\s*\);\s*\}', lambda _: passwd_widget_new, content)
 
-              # Remover o botão "OK" na tela _connectDialog, forçando o usuário a aguardar
+              # Remover o botão "OK" na tela _connectDialog
               idx = content.find('_connectDialog(')
               if idx != -1:
                   part1 = content[:idx]
